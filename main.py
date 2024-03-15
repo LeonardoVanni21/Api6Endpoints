@@ -47,7 +47,6 @@ async def criar_transacao(id: int, valor: float, tipo: str, descricao: str):
             if tipo == "c":
                 conta["valor_na_conta"] += valor
             elif tipo == "d":
-                validar_saldo_negativo(valor, conta)
                 conta["valor_na_conta"] -= valor
             else:
                 raise HTTPException(status_code=400, detail="Tipo inválido")
@@ -91,23 +90,15 @@ async def atualizar_transacao(id: int, transacao_id: int, valor: float, tipo: st
                     if tipo != "c" and tipo != "d":
                         raise HTTPException(status_code=400, detail="Tipo inválido")
                     elif transacao["tipo"] == "c" and tipo == "d":
-                        if conta["valor_na_conta"] < transacao["valor"] + valor:
-                            raise HTTPException(status_code=400, detail="Saldo insuficiente")
                         conta["valor_na_conta"] -= transacao["valor"] + valor
                     elif transacao["tipo"] == "d" and tipo == "c":
-                        if conta["valor_na_conta"] < transacao["valor"] + valor:
-                            raise HTTPException(status_code=400, detail="Saldo insuficiente")
                         conta["valor_na_conta"] += transacao["valor"] + valor
                     else:
                         valor_conta = conta["valor_na_conta"]
                         if transacao["tipo"] == "c":
-                            if (valor_conta - transacao["valor"]) + valor < 0:
-                                raise HTTPException(status_code=400, detail="Saldo insuficiente")
                             conta["valor_na_conta"] -= transacao["valor"]
                             conta["valor_na_conta"] += valor
                         else:
-                            if (valor_conta + transacao["valor"]) - valor < 0:
-                                raise HTTPException(status_code=400, detail="Saldo insuficiente")
                             conta["valor_na_conta"] += transacao["valor"]
                             conta["valor_na_conta"] -= valor
                     conta["transacoes"][i] = {
