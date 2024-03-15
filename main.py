@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
 
 app = FastAPI()
 
@@ -94,7 +95,6 @@ async def atualizar_transacao(id: int, transacao_id: int, valor: float, tipo: st
                     elif transacao["tipo"] == "d" and tipo == "c":
                         conta["valor_na_conta"] += transacao["valor"] + valor
                     else:
-                        valor_conta = conta["valor_na_conta"]
                         if transacao["tipo"] == "c":
                             conta["valor_na_conta"] -= transacao["valor"]
                             conta["valor_na_conta"] += valor
@@ -132,3 +132,74 @@ async def ler_cliente(id: int):
         if conta["id"] == id:
             return conta
     raise HTTPException(status_code=404, detail="Conta inexistente")
+
+
+client = TestClient(app)
+
+
+def test_criar_transacao():
+    response = client.post("/clientes/1/transacoes", json={"valor": 1500, "tipo": "d", "descricao": "Uma transacao"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": 1,
+        "nome": "Silvio Santos",
+        "valor_na_conta": 8500,
+        "transacoes": [
+            {
+                "valor": 1500,
+                "tipo": "d",
+                "descricao": "Uma transacao"
+            }
+        ],
+    }
+
+
+def test_ler_transacoes():
+    response = client.get("/clientes/1/transacoes")
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "valor": 1500,
+            "tipo": "d",
+            "descricao": "Uma transacao"
+        }
+    ]
+
+
+def test_ler_transacao():
+    response = client.get("/clientes/1/transacoes/0")
+    assert response.status_code == 200
+    assert response.json() == {
+        "valor": 1500,
+        "tipo": "d",
+        "descricao": "Uma transacao"
+    }
+
+
+def test_atualizar_transacao():
+    response = client.put("/clientes/1/transacoes/0", json={"valor": 1500, "tipo": "c", "descricao": "Uma transacao"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "valor": 1500,
+        "tipo": "c",
+        "descricao": "Uma transacao",
+    }
+
+
+def test_deletar_transacao():
+    response = client.delete("/clientes/1/transacoes/0")
+    assert response.status_code == 204
+    response = client.get("/clientes/1/transacoes")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_ler_cliente():
+    response = client.get("/clientes/1")
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": 1,
+        "nome": "Silvio Santos",
+        "valor_na_conta": 8500,
+        "transacoes": [],
+    }
