@@ -41,7 +41,7 @@ contasBanco = [
 ]
 
 
-@app.post("/clientes/[id]/transacoes")
+@app.post("/clientes/{id}/transacoes")
 async def criar_transacao(id: int, valor: float, tipo: str, descricao: str):
     for conta in contasBanco:
         if conta["id"] == id:
@@ -60,7 +60,7 @@ async def criar_transacao(id: int, valor: float, tipo: str, descricao: str):
     raise HTTPException(status_code=404, detail="Conta inexistente")
 
 
-@app.get("/clientes/[id]/transacoes")
+@app.get("/clientes/{id}/transacoes")
 async def ler_transacoes(id: int):
     for conta in contasBanco:
         if conta["id"] == id:
@@ -68,7 +68,7 @@ async def ler_transacoes(id: int):
     raise HTTPException(status_code=404, detail="Conta inexistente")
 
 
-@app.get("/clientes/[id]/transacoes/[transacao_id]")
+@app.get("/clientes/{id}/transacoes/{transacao_id}")
 async def ler_transacao(id: int, transacao_id: int):
     for conta in contasBanco:
         if conta["id"] == id:
@@ -79,7 +79,7 @@ async def ler_transacao(id: int, transacao_id: int):
     raise HTTPException(status_code=404, detail="Conta inexistente")
 
 
-@app.put("/clientes/[id]/transacoes/[transacao_id]")
+@app.put("/clientes/{id}/transacoes/{transacao_id}")
 async def atualizar_transacao(id: int, transacao_id: int, valor: float, tipo: str, descricao: str):
     for conta in contasBanco:
         if conta["id"] == id:
@@ -109,7 +109,7 @@ async def atualizar_transacao(id: int, transacao_id: int, valor: float, tipo: st
                 return conta["transacoes"][i]
 
 
-@app.delete("/clientes/[id]/transacoes/[transacao_id]", status_code=204)
+@app.delete("/clientes/{id}/transacoes/{transacao_id}", status_code=204)
 async def deletar_transacao(id: int, transacao_id: int):
     for conta in contasBanco:
         if conta["id"] == id:
@@ -126,31 +126,38 @@ async def deletar_transacao(id: int, transacao_id: int):
     raise HTTPException(status_code=404, detail="Conta inexistente")
 
 
-@app.get("/clientes/[id]")
+client = TestClient(app)
+
+
+@app.get("/clientes/{id}")
 async def ler_cliente(id: int):
     for conta in contasBanco:
         if conta["id"] == id:
+            response = client.get(f"/clientes/{id}/transacoes")
+            conta["transacoes"] = response.json()
             return conta
     raise HTTPException(status_code=404, detail="Conta inexistente")
 
 
-client = TestClient(app)
-
-
 def test_criar_transacao():
-    response = client.post("/clientes/1/transacoes", json={"valor": 1500, "tipo": "d", "descricao": "Uma transacao"})
+    response = client.post("/clientes/1/transacoes?valor=1500&tipo=d&descricao=Uma%20Transacao")
     assert response.status_code == 200
     assert response.json() == {
         "id": 1,
         "nome": "Silvio Santos",
-        "valor_na_conta": 8500,
+        "valor_na_conta": 8500.0,
         "transacoes": [
             {
                 "valor": 1500,
                 "tipo": "d",
                 "descricao": "Uma transacao"
+            },
+            {
+                "valor": 1500.0,
+                "tipo": "d",
+                "descricao": "Uma Transacao"
             }
-        ],
+        ]
     }
 
 
@@ -162,6 +169,11 @@ def test_ler_transacoes():
             "valor": 1500,
             "tipo": "d",
             "descricao": "Uma transacao"
+        },
+        {
+            "valor": 1500.0,
+            "tipo": "d",
+            "descricao": "Uma Transacao"
         }
     ]
 
@@ -177,7 +189,7 @@ def test_ler_transacao():
 
 
 def test_atualizar_transacao():
-    response = client.put("/clientes/1/transacoes/0", json={"valor": 1500, "tipo": "c", "descricao": "Uma transacao"})
+    response = client.put("/clientes/1/transacoes/0?valor=1500&tipo=c&descricao=Uma transacao")
     assert response.status_code == 200
     assert response.json() == {
         "valor": 1500,
@@ -187,6 +199,7 @@ def test_atualizar_transacao():
 
 
 def test_deletar_transacao():
+    response = client.delete("/clientes/1/transacoes/1")
     response = client.delete("/clientes/1/transacoes/0")
     assert response.status_code == 204
     response = client.get("/clientes/1/transacoes")
@@ -200,6 +213,6 @@ def test_ler_cliente():
     assert response.json() == {
         "id": 1,
         "nome": "Silvio Santos",
-        "valor_na_conta": 8500,
+        "valor_na_conta": 11500,
         "transacoes": [],
     }
